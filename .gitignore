@@ -1,0 +1,4 @@
+# Laid down by Claude Code each time it loads the plugin from disk
+.claude-plugin/types/
+node_modules/
+.DS_Store

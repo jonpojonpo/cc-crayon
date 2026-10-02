@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "cc-crayon",
+  "description": "crayon: colorful, themed Claude Code replies",
+  "owner": {
+    "name": "jonpojonpo",
+    "url": "https://github.com/jonpojonpo"
+  },
+  "plugins": [
+    {
+      "name": "crayon",
+      "description": "Colorful replies: themed Markdown plus inline <t color bold italic> tags the model can write, drawn with real Ink Text styling",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "jonpojonpo",
+        "url": "https://github.com/jonpojonpo"
+      },
+      "homepage": "https://github.com/jonpojonpo/cc-crayon",
+      "repository": "https://github.com/jonpojonpo/cc-crayon",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": ["color", "theme", "markdown", "terminal", "ink", "output-style", "function-hooks", "mod"]
+    }
+  ]
+}
