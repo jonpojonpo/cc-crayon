@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-10-02
+
+- The `classic.SessionStart` and `config.set` hooks now do their work first and then pass the event on unchanged with `return next(e)`. A `/config` theme change is read straight from the change itself.
+- README: a table of every hook, what it does and what it changes, and what crayon touches.
+- A listing icon.
+
 ## 0.1.0 — 2026-10-02
 
 First release.

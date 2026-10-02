@@ -46,10 +46,13 @@ function usage(p: CrayonPrefs, isLight: boolean): string {
   ].join('\n')
 }
 
+/** Whether a /config theme value names a light theme. */
+const isLightName = (theme: unknown) => /light/i.test(String(theme ?? ''))
+
 async function loadLight($: EngineInterface): Promise<void> {
   const rows = await $.config.list()
   const theme = rows.find(row => row.key === 'theme')
-  await update($, isLightTheme, () => /light/i.test(String(theme?.value ?? '')))
+  await update($, isLightTheme, () => isLightName(theme?.value))
 }
 
 /** The saved prefs and the /config theme, read into the session's state. */
@@ -85,15 +88,15 @@ export const register: Register = on => {
   // `/clear` (and a resume or fork) goes on under a new session whose state
   // starts empty, and no `session.start` fires for it: read the prefs again.
   on('classic.SessionStart', async ($, e, next) => {
-    const result = await next(e)
     await hydrate($).catch(() => undefined)
-    return result
+    return next(e)
   })
 
+  // Only watches: the new theme picks crayon's light or dark palette, and the
+  // change itself goes on untouched.
   on('config.set', { key: 'theme' }, async ($, e, next) => {
-    const result = await next(e)
-    await loadLight($).catch(() => undefined)
-    return result
+    await update($, isLightTheme, () => isLightName(e.value))
+    return next(e)
   })
 
   on('prompt.compose', async ($, e, next) => {

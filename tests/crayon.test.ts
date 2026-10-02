@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 
 import { parseBlocks, parseInlines, plainOf, restoreLines, stripStreamed, stripTags } from '../hooks/parse'
 import { DEMO } from '../hooks/text'
-import { THEMES } from '../hooks/themes'
+import { THEMES, forLight } from '../hooks/themes'
 
 const SURFACES = ['terminal', 'desktop', 'vscode', 'mobile'] as const
 
@@ -158,5 +158,30 @@ describe('prefs', () => {
     expect(await h3Color()).toBe(THEMES.crayon!.h3)
     await $.classic.SessionStart({ source: 'clear' })
     expect(await h3Color()).toBe(THEMES.synthwave!.h3)
+  })
+
+  test('a light /config theme switches to the light palette, and the change goes on untouched', async ($, on) => {
+    mock.store(on)
+    const seen: unknown[] = []
+    on('config.set', ($, e) => {
+      seen.push(e.value)
+      return { value: e.value }
+    })
+    const h3Color = async () => {
+      const ui = await $.ui.mount({ plugin: 'crayon', surface: 'terminal', component: 'AssistantMessage', props: reply('### Clouds') })
+      const color = (await ui.find({ type: 'Text', text: /^Clouds$/ }))?.props.color
+      await ui.unmount()
+      return color
+    }
+    expect(await h3Color()).toBe(THEMES.crayon!.h3)
+    await $.config.set({
+      key: 'theme',
+      value: 'light',
+      previous: 'dark',
+      provider: { plugin: 'engine', tier: 'core' },
+      origin: { kind: 'composer' },
+    })
+    expect(seen).toEqual(['light'])
+    expect(await h3Color()).toBe(forLight(THEMES.crayon!.h3))
   })
 })
