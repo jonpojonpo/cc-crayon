@@ -93,14 +93,24 @@ Settings are saved across sessions, and changing the theme redraws earlier repli
 
 ## How it works
 
-crayon is a single hooks module (`hooks/register.tsx`):
+crayon is one hooks module, `hooks/register.tsx`. It parses replies with `hooks/parse.ts`, draws them with `hooks/render.tsx`, takes its palettes from `hooks/themes.ts`, and keeps the guide and demo text in `hooks/text.ts`. Every color it hands the surface is a `#rrggbb` string, and on light backgrounds each one is darkened until it reads.
 
-- a `ui.render` hook on `AssistantMessage` parses each reply (`hooks/parse.ts`) and draws it with the surface's own `Box`, `Text`, `Link` and `Code` elements (`hooks/render.tsx`);
-- a `prompt.compose` hook adds the tag guide (`hooks/text.ts`) as a session-scoped system prompt section;
-- a `classic.MessageDisplay` hook strips tags from lines as they stream and puts them back for the finished block;
-- `/crayon` is a registered command whose output is drawn by crayon too.
+### Hooks
 
-Palettes live in `hooks/themes.ts`. Every color crayon hands the surface is a `#rrggbb` string, and on light backgrounds each one is darkened until it reads.
+Each hook, what it does, and what it changes:
+
+| Hook | What it does | What it changes |
+| --- | --- | --- |
+| `session.start` | Reads crayon's saved settings from its plugin store, reads (never writes) the `/config` theme to tell whether the background is light, and registers the `/crayon` command | Adds the `/crayon` command. Nothing else |
+| `classic.SessionStart` | After `/clear`, a resume or a fork, reads the same saved settings and `/config` theme again, because the new session starts with empty plugin state | Nothing: the event is passed on unchanged |
+| `config.set` (key `theme` only) | Watches for a `/config` theme change so crayon can switch between its dark and light palettes | Nothing: the event is passed on unchanged and crayon never writes settings. It only re-reads the theme afterwards |
+| `prompt.compose` | Appends one system prompt section, the tag guide (about 550 tokens), when a UI draws replies and `/crayon teach` is on | Adds that one section. Other sections are untouched, and nothing is added in headless (`claude -p`) runs |
+| `command.run` (`/crayon` only) | Answers crayon's own `/crayon` command | crayon's own settings, saved in its plugin store. No other command is touched |
+| `classic.MessageDisplay` | While a reply streams, removes crayon's tags from the lines Claude Code draws live | Only the text shown on screen while streaming. The stored message is untouched |
+| `ui.render` (`AssistantMessage`) | Draws each finished reply with themed Markdown and the inline tags | How replies look. When crayon is off, or a reply is over 30,000 characters, it hands the reply back to Claude Code's own renderer |
+| `ui.render` (`CommandOutput`, `/crayon` only) | Draws the output of `/crayon` in color | How `/crayon`'s output looks |
+
+**What crayon touches.** crayon makes no network requests and reads or writes no files. It starts no processes, and it doesn't change permissions, tools or settings. It keeps its settings (on/off, theme, background, teaching) in its own plugin store on your machine. While a session runs, it also holds those settings, the light/dark flag, and the original text of up to 3,000 streamed lines whose tags it removed.
 
 ## Development
 
