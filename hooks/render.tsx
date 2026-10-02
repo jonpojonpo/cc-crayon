@@ -3,8 +3,19 @@
 
 import type { ElementTable, RenderChildren, RenderElement } from 'claude-code'
 
-import { type Block, type CalloutKind, type Inline, plainOf, stripTags } from './parse'
-import { GRADIENTS, RAINBOW, ROLE_COLORS, type Palette, resolveColor, shadeFor, spread } from './themes'
+import { type Block, type CalloutKind, type GradStops, type Inline, plainOf, stripTags } from './parse'
+import {
+  GRADIENTS,
+  RAINBOW,
+  ROLE_COLORS,
+  THEMES,
+  type Palette,
+  paletteFor,
+  resolveColor,
+  shadeFor,
+  spread,
+  toneColor,
+} from './themes'
 
 type Table = Pick<ElementTable, 'Box' | 'Text' | 'Link' | 'Code' | 'Markdown'>
 
@@ -81,12 +92,17 @@ export function cellWidth(text: string): number {
   return n
 }
 
-/** A raw color as drawn here: a role from the palette, anything else shaded for the background. */
+/** A fixed color as the theme draws it: toned to the theme, then shaded for the background. */
+function themed(hex: string, ctx: Ctx): string {
+  return shadeFor(toneColor(hex, ctx.p.tone), ctx.isLight)
+}
+
+/** A raw color as drawn here: a role from the palette, anything else themed. */
 function colorOf(raw: string | undefined, ctx: Ctx): string | undefined {
   if (raw === undefined) return undefined
   if (ROLE_COLORS[raw.trim().toLowerCase()] !== undefined) return resolveColor(raw, ctx.p)
   const hex = resolveColor(raw, ctx.p)
-  return hex === undefined ? undefined : shadeFor(hex, ctx.isLight)
+  return hex === undefined ? undefined : themed(hex, ctx)
 }
 
 /** Dark or light text, whichever reads on `bg`. */
@@ -108,18 +124,23 @@ function graded(text: string, stops: readonly string[], ctx: Ctx, segments = 48)
   return runs.map((run, k) => <Text color={colors[k]!}>{run}</Text>)
 }
 
-function stopsOf(stops: readonly string[] | 'rainbow', ctx: Ctx): string[] {
-  if (stops === 'rainbow') return RAINBOW.map(c => shadeFor(c, ctx.isLight))
+/** A gradient's colors as drawn: a theme's title stops, or each stop themed; the theme's own when none resolve. */
+function stopsOf(stops: GradStops, ctx: Ctx): readonly string[] {
+  if (stops === 'rainbow') return RAINBOW.map(c => themed(c, ctx))
+  if (!Array.isArray(stops)) {
+    const name = (stops as { theme?: string }).theme?.toLowerCase()
+    return name !== undefined && THEMES[name] !== undefined ? paletteFor(name, ctx.isLight).title : ctx.p.title
+  }
   const out: string[] = []
-  for (const stop of stops) {
+  for (const stop of stops as readonly string[]) {
     const preset = GRADIENTS[stop.toLowerCase()]
-    if (preset !== undefined) out.push(...preset.map(c => shadeFor(c, ctx.isLight)))
+    if (preset !== undefined) out.push(...preset.map(c => themed(c, ctx)))
     else {
       const color = colorOf(stop, ctx)
       if (color !== undefined) out.push(color)
     }
   }
-  return out.length > 0 ? out : GRADIENTS.sunset!.map(c => shadeFor(c, ctx.isLight))
+  return out.length > 0 ? out : ctx.p.title
 }
 
 /** The href a Link accepts (`https:` or local `http:`, printable ASCII, no `@`), or undefined. */

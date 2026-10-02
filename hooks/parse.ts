@@ -22,10 +22,16 @@ export type Inline =
   | { kind: 'code'; text: string }
   | { kind: 'link'; href: string; children: Inline[] }
   | { kind: 'span'; style: Style; children: Inline[] }
-  | { kind: 'grad'; stops: readonly string[] | 'rainbow'; children: Inline[] }
+  | { kind: 'grad'; stops: GradStops; children: Inline[] }
   | { kind: 'badge'; color?: string; children: Inline[] }
   | { kind: 'kbd'; text: string }
   | { kind: 'br' }
+
+/**
+ * A gradient's colors: stops as written (names, roles, hex or presets), the
+ * rainbow, or a theme's own title gradient (`{}` for the theme in force).
+ */
+export type GradStops = readonly string[] | 'rainbow' | { theme?: string }
 
 export type Align = 'left' | 'center' | 'right'
 
@@ -347,7 +353,7 @@ function listAt(lines: readonly string[], start: number): [Block, number] {
 
 type TagHead =
   | { kind: 'span'; style: Style }
-  | { kind: 'grad'; stops: readonly string[] | 'rainbow' }
+  | { kind: 'grad'; stops: GradStops }
   | { kind: 'badge'; color?: string }
 
 type TagSpec = (named: Record<string, string>, bare: string[]) => TagHead
@@ -429,6 +435,11 @@ const STYLE_TAGS: Record<string, TagSpec> = {
   note: () => span({ color: 'info' }),
   accent: () => span({ color: 'accent' }),
   muted: () => span({ color: 'muted' }),
+  c1: () => span({ color: 'c1' }),
+  c2: () => span({ color: 'c2' }),
+  c3: () => span({ color: 'c3' }),
+  c4: () => span({ color: 'c4' }),
+  c5: () => span({ color: 'c5' }),
   rainbow: () => ({ kind: 'grad', stops: 'rainbow' }),
   grad: (n, b) => ({ kind: 'grad', stops: gradStops(n, b) }),
   gradient: (n, b) => ({ kind: 'grad', stops: gradStops(n, b) }),
@@ -436,9 +447,11 @@ const STYLE_TAGS: Record<string, TagSpec> = {
   pill: (n, b) => ({ kind: 'badge', color: n.color ?? n.bg ?? b[0] }),
 }
 
-function gradStops(named: Record<string, string>, bare: string[]): readonly string[] {
+/** A `<grad>` tag's stops; none, or `theme=<name>`, takes a theme's own gradient. */
+function gradStops(named: Record<string, string>, bare: string[]): GradStops {
+  if (named.theme !== undefined) return { theme: named.theme }
   const stops = [named.from, ...bare, ...(named.via ? [named.via] : []), named.to].filter((s): s is string => !!s)
-  return stops.length > 0 ? stops : ['sunset']
+  return stops.length > 0 ? stops : {}
 }
 
 function tagSpec(name: string): TagSpec | undefined {

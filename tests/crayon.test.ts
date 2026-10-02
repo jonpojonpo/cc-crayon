@@ -1,8 +1,8 @@
-import { describe, expect, mock, test } from 'claude-code/testing'
+import { type Engine, describe, expect, mock, test } from 'claude-code/testing'
 
 import { parseBlocks, parseInlines, plainOf, restoreLines, stripStreamed, stripTags } from '../hooks/parse'
-import { DEMO } from '../hooks/text'
-import { THEMES, forLight } from '../hooks/themes'
+import { DEMO, GUIDE } from '../hooks/text'
+import { NAMED_COLORS, THEMES, forLight } from '../hooks/themes'
 
 const SURFACES = ['terminal', 'desktop', 'vscode', 'mobile'] as const
 
@@ -183,5 +183,49 @@ describe('prefs', () => {
     })
     expect(seen).toEqual(['light'])
     expect(await h3Color()).toBe(forLight(THEMES.crayon!.h3))
+  })
+})
+
+describe('theme colors', () => {
+  const PREFS = { isEnabled: true, isTeaching: true, background: 'dark' } as const
+
+  /** The color of the first Text whose text is `text`, drawn under `theme`. */
+  const colorUnder = async ($: Engine, text: RegExp, markup: string) => {
+    const ui = await $.ui.mount({ plugin: 'crayon', surface: 'terminal', component: 'AssistantMessage', props: reply(markup) })
+    const color = (await ui.find({ type: 'Text', text }))?.props.color
+    await ui.unmount()
+    return color
+  }
+
+  test('series colors and meaning colors come from the theme', async ($, on) => {
+    mock.store(on, { prefs: { ...PREFS, theme: 'ocean' } })
+    on('classic.SessionStart', () => ({}))
+    await $.classic.SessionStart({ source: 'clear' })
+    expect(await colorUnder($, /^api$/, 'the <c1>api</c1> and <ok>fine</ok>')).toBe(THEMES.ocean!.series[0])
+    expect(await colorUnder($, /^fine$/, 'the <c1>api</c1> and <ok>fine</ok>')).toBe(THEMES.ocean!.ok)
+    const ui = await $.ui.mount({ plugin: 'crayon', surface: 'terminal', component: 'AssistantMessage', props: reply('a <badge c3>v2</badge>') })
+    expect((await ui.find({ type: 'Text', text: /^ v2 $/ }))?.props.backgroundColor).toBe(THEMES.ocean!.series[2])
+    await ui.unmount()
+  })
+
+  test('fixed colors keep their hue under crayon and turn gray under mono', async ($, on) => {
+    mock.store(on, { prefs: { ...PREFS, theme: 'mono' } })
+    on('classic.SessionStart', () => ({}))
+    expect(await colorUnder($, /^warm$/, 'a <orange>warm</orange>')).toBe(NAMED_COLORS.orange)
+    await $.classic.SessionStart({ source: 'clear' })
+    const gray = String(await colorUnder($, /^warm$/, 'a <orange>warm</orange>'))
+    expect(gray.slice(1, 3)).toBe(gray.slice(3, 5))
+    expect(gray.slice(3, 5)).toBe(gray.slice(5, 7))
+  })
+
+  test('<grad> draws the theme gradient, and theme= names another theme', async $ => {
+    expect(await colorUnder($, /^T$/, '<grad>Title text</grad>')).toBe(THEMES.crayon!.title[0])
+    expect(await colorUnder($, /^O$/, '<grad theme="ocean">Ocean text</grad>')).toBe(THEMES.ocean!.title[0])
+  })
+
+  test('the guide steers toward theme colors', async () => {
+    expect(GUIDE).toContain('<c1>')
+    expect(GUIDE).toContain('tinted toward the theme')
+    expect(GUIDE).not.toContain('hotpink')
   })
 })

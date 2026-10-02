@@ -45,28 +45,34 @@ claude --plugin-dir ./cc-crayon
 - Quotes appear in a frame, and GitHub alerts (`> [!TIP]`, `> [!WARNING]`, …) become colored callout boxes.
 - Horizontal rules are gradient lines, and code fences use Claude Code's own syntax highlighter.
 
-**The model can also write inline tags.** crayon adds a short guide to the system prompt so the model knows them, and in practice it starts using them on its own:
+**The model can also write inline tags.** crayon adds a short guide to the system prompt so the model knows them. The guide steers it toward the theme's own colors, so a reply follows whatever theme you pick:
 
 | Write | Draws |
 | --- | --- |
-| `<t color="#ff8800" bold italic>…</t>` | Ink `Text` props: `color`, `bg`, `bold`, `italic`, `underline`, `strike`, `dim`, `inverse` |
-| `<Text color="cyan" bold>…</Text>` | the same, in JSX spelling |
-| `<t red bold>…</t>` | bare words as shorthand |
-| `<orange>…</orange>` `<#ff5f87>…</>` | a named or hex color as a tag (`</>` closes the innermost tag) |
-| `<bg navy>…</bg>` `<hl>…</hl>` | background color, or highlight |
-| `<ok>` `<warn>` `<err>` `<info>` `<accent>` `<muted>` | colors that carry meaning and follow the theme |
-| `<b>` `<i>` `<u>` `<s>` `<dim>` | style shorthands |
-| `<badge green>PASS</badge>` | a solid label |
-| `<kbd>Ctrl+C</kbd>` | a key cap |
+| `<ok>` `<warn>` `<err>` `<info>` `<accent>` `<muted>` | colors that carry meaning, from the theme |
+| `<c1>` … `<c5>` | the theme's series colors, for telling items apart (services, cities, options) |
+| `<badge ok>PASS</badge>` `<badge c2>v2.1</badge>` | a solid label in any of those colors |
+| `<hl>…</hl>` | the theme's highlight |
+| `<grad>…</grad>` | the theme's own gradient; `<grad theme="ocean">` borrows another theme's |
 | `<rainbow>…</rainbow>` | rainbow text |
-| `<grad sunset>…</grad>` `<grad from="#f0f" to="#0ff">…</grad>` | a gradient, preset or your own stops |
-| `<panel title="…" color="teal">` … `</panel>` (each tag on its own line) | a bordered box around any Markdown |
+| `<t color="c3" bold italic>…</t>` | Ink `Text` props: `color`, `bg`, `bold`, `italic`, `underline`, `strike`, `dim`, `inverse` |
+| `<Text color="accent" bold>…</Text>` `<t accent bold>…</t>` | the same in JSX spelling, or with bare words as shorthand |
+| `<bg accent>…</bg>` | a background color |
+| `<b>` `<i>` `<u>` `<s>` `<dim>` `<kbd>Ctrl+C</kbd>` `<br>` | style shorthands and a key cap |
+| `<panel title="…" color="info">` … `</panel>` (each tag on its own line) | a bordered box around any Markdown |
+| `<orange>…</orange>` `<#ff5f87>…</>` `<grad from="#f0f" to="#0ff">` | fixed colors, tinted toward the theme (see below) |
 
-Named colors include the 16 ANSI names plus `orange pink hotpink purple violet lavender indigo teal mint lime emerald gold amber coral salmon peach rose crimson ruby sky azure navy brown silver`. Gradient presets: `sunset fire ocean aurora candy neon mint peach lava ice gold forest`.
+Every place a color goes takes a theme name (`ok`, `c2`, `accent`, …), a named color, `#hex` or `rgb()`. `</>` closes the innermost tag. Named colors include the 16 ANSI names plus `orange pink hotpink purple violet lavender indigo teal mint lime emerald gold amber coral salmon peach rose crimson ruby sky azure navy brown silver`. Gradient presets: `sunset fire ocean aurora candy neon mint peach lava ice gold forest`.
 
 Tags inside code spans and fences are left alone. Unknown tags such as `<div>` show as written, and an unclosed tag runs to the end of its paragraph instead of showing raw.
 
 ## Themes
+
+`/crayon <theme>` restyles everything: the Markdown, the meaning and series colors, badges and gradients. Replies already on screen are redrawn too.
+
+![A live reply redrawn as the theme switches between crayon, synthwave, pastel, ocean, forest and mono](docs/theme-switch.gif)
+
+Fixed colors follow the theme too. Each theme has a tone that keeps a color's hue but restyles it: pastel softens it, synthwave turns it neon, ocean and forest tint it, and mono turns it gray. An `<orange>` the model picks still reads as orange, in the theme's style.
 
 ![The demo under each of crayon's six themes](docs/themes.png)
 
@@ -87,7 +93,7 @@ Settings are saved across sessions, and changing the theme redraws earlier repli
 
 - **Streaming.** While a reply streams in, Claude Code draws it with its own renderer. crayon strips the tags from those lines so they never flash on screen, and each block switches to full color when it finishes.
 - **Tags stay in the transcript.** The saved message keeps the tags, so the ctrl+o transcript view shows them raw and the model sees them in its history. The guide tells the model never to put tags in code, files, tool inputs or commit messages.
-- **System prompt cost.** The guide is about 550 tokens per session. Use `/crayon teach off` to drop it and keep only the automatic Markdown coloring. The guide is also left out of headless (`claude -p`) runs.
+- **System prompt cost.** The guide is about 600 tokens per session. Use `/crayon teach off` to drop it and keep only the automatic Markdown coloring. The guide is also left out of headless (`claude -p`) runs.
 - **Fallbacks.** Replies longer than 30,000 characters and tables wider than the terminal are drawn by Claude Code's normal renderer.
 - **Surfaces.** The tests draw the full demo on the terminal, desktop, VS Code and mobile surfaces.
 
@@ -104,7 +110,7 @@ Each hook, what it does, and what it changes:
 | `session.start` | Reads crayon's saved settings from its plugin store, reads (never writes) the `/config` theme to tell whether the background is light, and registers the `/crayon` command | Adds the `/crayon` command. Nothing else |
 | `classic.SessionStart` | After `/clear`, a resume or a fork, reads the same saved settings and `/config` theme again, because the new session starts with empty plugin state | Nothing: the event is passed on unchanged |
 | `config.set` (key `theme` only) | Watches for a `/config` theme change so crayon can switch between its dark and light palettes | Nothing: the event is passed on unchanged and crayon never writes settings. It only re-reads the theme afterwards |
-| `prompt.compose` | Appends one system prompt section, the tag guide (about 550 tokens), when a UI draws replies and `/crayon teach` is on | Adds that one section. Other sections are untouched, and nothing is added in headless (`claude -p`) runs |
+| `prompt.compose` | Appends one system prompt section, the tag guide (about 600 tokens), when a UI draws replies and `/crayon teach` is on | Adds that one section. Other sections are untouched, and nothing is added in headless (`claude -p`) runs |
 | `command.run` (`/crayon` only) | Answers crayon's own `/crayon` command | crayon's own settings, saved in its plugin store. No other command is touched |
 | `classic.MessageDisplay` | While a reply streams, removes crayon's tags from the lines Claude Code draws live | Only the text shown on screen while streaming. The stored message is untouched |
 | `ui.render` (`AssistantMessage`) | Draws each finished reply with themed Markdown and the inline tags | How replies look. When crayon is off, or a reply is over 30,000 characters, it hands the reply back to Claude Code's own renderer |

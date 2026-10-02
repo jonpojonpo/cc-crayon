@@ -32,9 +32,8 @@ function parse(text: string): Block[] {
 
 function usage(p: CrayonPrefs, isLight: boolean): string {
   const themes = THEME_NAMES.map(name => {
-    const stops = THEMES[name]!.title
     const label = name === p.theme ? `**${name}**` : name
-    return stops.length > 1 ? `<grad from="${stops[0]}" to="${stops[stops.length - 1]}">${label}</grad>` : label
+    return THEMES[name]!.title.length > 1 ? `<grad theme="${name}">${label}</grad>` : label
   }).join(' · ')
   const background = p.background === 'auto' ? `auto (${isLight ? 'light' : 'dark'})` : p.background
   return [

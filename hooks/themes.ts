@@ -27,6 +27,21 @@ export type Palette = {
   highlight: string
   /** The opening ⏺ of a reply. */
   dot: string
+  /** Distinct hues for telling items apart, `c1` to `c5` in order. */
+  series: readonly string[]
+  /** How the theme restyles a fixed color (a name or hex) to sit in it. */
+  tone: Tone
+}
+
+/**
+ * A fixed color pulled toward a theme: saturation scaled, lightness moved
+ * toward `lightness[0]` by `lightness[1]`, then mixed with `tint[0]` by
+ * `tint[1]`. Hue is kept, so an orange stays orange.
+ */
+export type Tone = {
+  saturation: number
+  lightness?: readonly [target: number, mix: number]
+  tint?: readonly [color: string, mix: number]
 }
 
 export const THEMES: Record<string, Palette> = {
@@ -52,6 +67,8 @@ export const THEMES: Record<string, Palette> = {
     accent: '#d787ff',
     highlight: '#ffd75f',
     dot: '#ff6fae',
+    series: ['#ff5f87', '#ffaf5f', '#5fd7ff', '#afd75f', '#d787ff'],
+    tone: { saturation: 1 },
   },
   synthwave: {
     title: ['#f706cf', '#fd1d53', '#fdb428'],
@@ -75,6 +92,8 @@ export const THEMES: Record<string, Palette> = {
     accent: '#b967ff',
     highlight: '#f9c80e',
     dot: '#ff2ec4',
+    series: ['#ff2ec4', '#2de2e6', '#f9c80e', '#b967ff', '#fd1d53'],
+    tone: { saturation: 1.3, lightness: [0.62, 0.3], tint: ['#ff2ec4', 0.12] },
   },
   pastel: {
     title: ['#f5a9b8', '#c3b1e1', '#a7d8f0'],
@@ -98,6 +117,8 @@ export const THEMES: Record<string, Palette> = {
     accent: '#d6b4f5',
     highlight: '#f6e3a1',
     dot: '#f5a9b8',
+    series: ['#f5a9b8', '#a7d8f0', '#f6e3a1', '#c3b1e1', '#b8e0a8'],
+    tone: { saturation: 0.6, lightness: [0.8, 0.55] },
   },
   ocean: {
     title: ['#00d2ff', '#3a7bd5', '#8e7dff'],
@@ -121,6 +142,8 @@ export const THEMES: Record<string, Palette> = {
     accent: '#b388ff',
     highlight: '#ffd740',
     dot: '#00d2ff',
+    series: ['#00d2ff', '#64ffda', '#82b1ff', '#b388ff', '#ffcc80'],
+    tone: { saturation: 0.9, tint: ['#00d2ff', 0.15] },
   },
   forest: {
     title: ['#a8e063', '#56ab2f', '#f4d35e'],
@@ -144,6 +167,8 @@ export const THEMES: Record<string, Palette> = {
     accent: '#ce93d8',
     highlight: '#ffd54f',
     dot: '#a8e063',
+    series: ['#a8e063', '#f4d35e', '#e8a87c', '#80cbc4', '#ce93d8'],
+    tone: { saturation: 0.7, lightness: [0.62, 0.2], tint: ['#a8e063', 0.12] },
   },
   mono: {
     title: ['#e0e0e0'],
@@ -167,6 +192,8 @@ export const THEMES: Record<string, Palette> = {
     accent: '#ffffff',
     highlight: '#d0d0d0',
     dot: '#d0d0d0',
+    series: ['#ffffff', '#c0c0c0', '#8a8a8a', '#dcdcdc', '#a6a6a6'],
+    tone: { saturation: 0 },
   },
 }
 
@@ -290,6 +317,11 @@ export const ROLE_COLORS: Record<string, (p: Palette) => string> = {
   note: p => p.info,
   accent: p => p.accent,
   muted: p => p.muted,
+  c1: p => p.series[0 % p.series.length]!,
+  c2: p => p.series[1 % p.series.length]!,
+  c3: p => p.series[2 % p.series.length]!,
+  c4: p => p.series[3 % p.series.length]!,
+  c5: p => p.series[4 % p.series.length]!,
 }
 
 type Rgb = [number, number, number]
@@ -386,7 +418,22 @@ export function paletteFor(name: string, isLight: boolean): Palette {
     accent: shade(base.accent),
     highlight: base.highlight,
     dot: shade(base.dot),
+    series: base.series.map(shade),
   }
+}
+
+/** A fixed color as the theme draws it: `tone` applied, hue kept. */
+export function toneColor(hex: string, tone: Tone): string {
+  if (tone.saturation === 1 && tone.lightness === undefined && tone.tint === undefined) return hex
+  const [h, s, l] = toHsl(toRgb(hex))
+  const lightness = tone.lightness === undefined ? l : l + (tone.lightness[0] - l) * tone.lightness[1]
+  let rgb = fromHsl([h, Math.max(0, Math.min(1, s * tone.saturation)), Math.max(0, Math.min(1, lightness))])
+  if (tone.tint !== undefined) {
+    const [tint, mix] = tone.tint
+    const t = toRgb(tint)
+    rgb = [rgb[0] + (t[0] - rgb[0]) * mix, rgb[1] + (t[1] - rgb[1]) * mix, rgb[2] + (t[2] - rgb[2]) * mix]
+  }
+  return toHex(rgb)
 }
 
 /** A user-picked color shaded for the background, as the palette's are. */
