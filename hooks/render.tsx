@@ -420,41 +420,63 @@ function table(b: Extract<Block, { kind: 'table' }>, ctx: Ctx): RenderElement | 
   const total = widths.reduce((sum, w) => sum + w + 3, 1)
   if (total > ctx.width - 1) return undefined
 
-  const line = (left: string, mid: string, right: string) => (
-    <Text color={p.muted}>{left + widths.map(w => '─'.repeat(w + 2)).join(mid) + right}</Text>
+  // Every column is a Box of fixed width, never a run of spaces: a surface
+  // with a proportional font (desktop) lines Boxes up and not padded text.
+  const bar = (glyph: string) => (
+    <Box width={1} flexShrink={0}>
+      <Text color={p.muted}>{glyph}</Text>
+    </Box>
   )
-  const row = (cells: readonly Inline[][], texts: readonly string[], isHeader: boolean) => (
-    <Text wrap="truncate-end">
-      <Text color={p.muted}>│</Text>
+  const line = (left: string, mid: string, right: string) => (
+    <Box flexDirection="row">
+      {bar(left)}
+      {widths.map((w, c) => (
+        <Box flexDirection="row" key={`l${c}`}>
+          <Box width={w + 2} flexShrink={0} overflow="hidden">
+            <Text color={p.muted} wrap="truncate-end">
+              {'─'.repeat(w + 2)}
+            </Text>
+          </Box>
+          {bar(c === widths.length - 1 ? right : mid)}
+        </Box>
+      ))}
+    </Box>
+  )
+  const row = (cells: readonly Inline[][], isHeader: boolean) => (
+    <Box flexDirection="row">
+      {bar('│')}
       {widths.map((w, c) => {
-        const room = w - cellWidth(texts[c] ?? '')
         const align = b.align[c] ?? 'left'
-        const left = align === 'right' ? room : align === 'center' ? Math.floor(room / 2) : 0
         const cell = cells[c] ?? []
         return (
-          <Text>
-            {' '.repeat(left + 1)}
-            {isHeader ? (
-              <Text bold color={p.h2}>
-                {inlines(cell, ctx, true)}
-              </Text>
-            ) : (
-              <Text>{inlines(cell, ctx)}</Text>
-            )}
-            {' '.repeat(room - left + 1)}
-            <Text color={p.muted}>│</Text>
-          </Text>
+          <Box flexDirection="row" key={`c${c}`}>
+            <Box
+              width={w + 2}
+              flexShrink={0}
+              paddingX={1}
+              justifyContent={align === 'right' ? 'flex-end' : align === 'center' ? 'center' : 'flex-start'}
+            >
+              {isHeader ? (
+                <Text bold color={p.h2} wrap="truncate-end">
+                  {inlines(cell, ctx, true)}
+                </Text>
+              ) : (
+                <Text wrap="truncate-end">{inlines(cell, ctx)}</Text>
+              )}
+            </Box>
+            {bar('│')}
+          </Box>
         )
       })}
-    </Text>
+    </Box>
   )
 
   return (
     <Box flexDirection="column">
       {line('╭', '┬', '╮')}
-      {row(b.header, plain[0]!, true)}
+      {row(b.header, true)}
       {line('├', '┼', '┤')}
-      {b.rows.map((cells, r) => row(cells, plain[r + 1]!, false))}
+      {b.rows.map((cells, r) => <Box key={`r${r}`}>{row(cells, false)}</Box>)}
       {line('╰', '┴', '╯')}
     </Box>
   )
