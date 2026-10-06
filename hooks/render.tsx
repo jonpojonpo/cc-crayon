@@ -432,8 +432,8 @@ function table(b: Extract<Block, { kind: 'table' }>, ctx: Ctx): RenderElement | 
       {bar(left)}
       {widths.map((w, c) => (
         <Box flexDirection="row" key={`l${c}`}>
-          <Box width={w + 2} flexShrink={0} overflow="hidden">
-            <Text color={p.muted} wrap="truncate-end">
+          <Box width={w + 2} height={1} flexShrink={0} overflow="hidden">
+            <Text color={p.muted} wrap="wrap">
               {'─'.repeat(w + 2)}
             </Text>
           </Box>
