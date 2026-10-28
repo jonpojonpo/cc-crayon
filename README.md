@@ -1,5 +1,7 @@
 # crayon
 
+[![HOL Guard Scanner](https://img.shields.io/github/actions/workflow/status/jonpojonpo/cc-crayon/plugin-scan.yml?branch=main&label=HOL%20Guard)](https://github.com/jonpojonpo/cc-crayon/actions/workflows/plugin-scan.yml)
+
 **Colorful Claude Code replies.** crayon redraws every assistant reply with themed Markdown and teaches the model a small set of inline tags that render as real Ink `<Text>` styling: colors, bold, italic, badges, gradients, callouts and panels.
 
 ![A live reply drawn by crayon: gradient title, status badges, colored key terms, a boxed table, a warning callout and a gradient sign-off](docs/reply.gif)

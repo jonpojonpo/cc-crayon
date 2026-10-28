@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 — 2026-10-28
+
+- CI: the [HOL Guard](https://github.com/hashgraph-online/hol-guard) plugin scanner runs on every push and pull request (read-only permissions, pinned actions, no secrets).
+- README: a scanner status badge.
+
 ## 0.2.0 — 2026-10-02
 
 Replies follow the theme as far as they can.
